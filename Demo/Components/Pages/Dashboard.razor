@@ -1,0 +1,40 @@
+﻿@page "/dashboard"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using VRChat.API.Client
+@using VRChat.API.Model
+@inject NavigationManager Navigation
+@inject ProtectedSessionStorage ProtectedSessionStore
+
+<h1>Dashboard</h1>
+
+@if (user == null) {
+    <p>Loading...</p>
+}
+else
+{
+    <h2>Hi @user.DisplayName</h2>
+}
+@code {
+    private CurrentUser? user;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // one shot
+        if (!firstRender) {
+            return;
+        }
+        var authCookie = await ProtectedSessionStore.GetAsync<string>("vrchat-auth-cookie");
+        if (!authCookie.Success) {
+            throw new Exception("Missing auth cookie");
+        }
+
+        var vrchat = new VRChatClientBuilder()
+            .WithAuthCookie(authCookie.Value!)
+            .WithApplication(name: "ASP.NET Core VRC Auth Demo", version: "0.0.0", contact: "@6TELOIV")
+            .Build();
+        
+        user = await vrchat.Authentication.GetCurrentUserAsync();
+        StateHasChanged();
+        return;
+    }
+}

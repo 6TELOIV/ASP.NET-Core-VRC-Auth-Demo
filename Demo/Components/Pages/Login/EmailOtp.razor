@@ -1,0 +1,51 @@
+﻿@page "/login/email-otp"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using VRChat.API.Client
+@using VRChat.API.Model
+@inject NavigationManager Navigation
+@inject ProtectedSessionStorage ProtectedSessionStore
+
+<h1>Login / Email One Time Password</h1>
+
+<EditForm Model="Model" OnSubmit="Submit" FormName="EmailOtp">
+    <div>
+        <label>
+            One Time Password:
+            <InputText @bind-Value="Model!.Otp" />
+        </label>
+    </div>
+    <div>
+        <button type="submit">Submit</button>
+    </div>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm]
+    private FormData? Model { get; set; }
+
+    protected override void OnInitialized() => Model ??= new();
+
+    private async void Submit() {
+        var authCookie = await ProtectedSessionStore.GetAsync<string>("vrchat-auth-cookie");
+        if (!authCookie.Success) {
+            throw new Exception("Missing auth cookie");
+        }
+
+        var vrchat = new VRChatClientBuilder()
+            .WithAuthCookie(authCookie.Value!)
+            .WithApplication(name: "ASP.NET Core VRC Auth Demo", version: "0.0.0", contact: "@6TELOIV")
+            .Build();
+        
+        var response = await vrchat.Authentication.Verify2FAEmailCodeAsync(new TwoFactorEmailCode(Model!.Otp!));
+        
+        if (response.Verified) {
+            Navigation.NavigateTo("/dashboard");
+        }
+    }
+
+    public class FormData
+    {
+        public string? Otp { get; set; }
+    }
+}
